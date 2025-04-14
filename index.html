@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>APROBACION</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 0; background-color: #f0f0f0; }
+    .pdf-container, .firma-container { display: none; padding: 20px; }
+    .pdf-container.active, .firma-container.active { display: block; }
+    iframe { width: 100%; height: 80vh; border: none; }
+    canvas { border: 1px solid #ccc; margin-top: 10px; background: #fff; }
+    button { margin: 10px 5px; padding: 10px 15px; border: none; border-radius: 5px; cursor: pointer; }
+    .firmar { background: #0a66a9; color: white; }
+    .pendiente { background: #999999; color: white; }
+    .finalizar { background: green; color: white; }
+    .container { max-width: 700px; margin: auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+  </style>
+</head>
+<body>
+
+  <div class="pdf-container active" id="pdfSection">
+    <div class="container">
+      <h2>Visualiza el documento</h2>
+      <iframe id="pdfViewer" src=""></iframe>
+      <button class="finalizar" onclick="mostrarFirma()">He terminado de revisar</button>
+    </div>
+  </div>
+
+  <div class="firma-container" id="firmaSection">
+    <div class="container">
+      <h2>APROBACION</h2>
+      <p><strong>La aprobación por parte del cliente de este dibujo implica absoluta responsabilidad sobre el diseño, modulación, tipo, espesor y color de vidrio y sistema de accesorios.</strong></p>
+      <p>La información suministrada en este documento es para uso exclusivo de Prefalum. Queda prohibida su reproducción y alteración.</p>
+      <p><strong>📄 Estás firmando el archivo:</strong> <span id="archivoNombre"></span></p>
+      <canvas id="canvas" width="600" height="200"></canvas><br>
+      <button class="firmar" onclick="enviarFirma()">Firmar</button>
+      <button class="pendiente" onclick="marcarPendiente()">Pendiente de cambios</button>
+    </div>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    let painting = false;
+    function startPosition(e) { painting = true; draw(e); }
+    function endPosition() { painting = false; ctx.beginPath(); }
+    function draw(e) {
+      if (!painting) return;
+      const rect = canvas.getBoundingClientRect();
+      const x = (e.clientX || e.touches[0].clientX) - rect.left;
+      const y = (e.clientY || e.touches[0].clientY) - rect.top;
+      ctx.lineWidth = 2; ctx.lineCap = 'round'; ctx.strokeStyle = '#000';
+      ctx.lineTo(x, y); ctx.stroke(); ctx.beginPath(); ctx.moveTo(x, y);
+    }
+    canvas.addEventListener('mousedown', startPosition);
+    canvas.addEventListener('mouseup', endPosition);
+    canvas.addEventListener('mousemove', draw);
+    canvas.addEventListener('touchstart', startPosition);
+    canvas.addEventListener('touchend', endPosition);
+    canvas.addEventListener('touchmove', function(e){ e.preventDefault(); draw(e); });
+
+    const params = new URLSearchParams(window.location.search);
+    const archivo = params.get("archivo") || "Documento sin nombre";
+    const urlPDF = params.get("url") || "";
+
+    document.getElementById("archivoNombre").textContent = archivo;
+    document.getElementById("pdfViewer").src = urlPDF;
+
+    function mostrarFirma() {
+      document.getElementById('pdfSection').classList.remove('active');
+      document.getElementById('firmaSection').classList.add('active');
+    }
+
+    function enviarFirma() {
+      const dataURL = canvas.toDataURL();
+      fetch("https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec", {
+        method: "POST",
+        body: JSON.stringify({ firma: dataURL, archivo: archivo }),
+        headers: { "Content-Type": "application/json" }
+      }).then(res => alert("Firma enviada correctamente.")).catch(console.error);
+    }
+
+    function marcarPendiente() {
+      fetch("https://script.google.com/macros/s/AKfycbxlDwfgGJk4u2xkcDspkP5zrCnrW0gXamfXLTB_GlBPId54dbJxE5Kibwwy7EzS7APc/exec", {
+        method: "POST",
+        body: JSON.stringify({ firma: "PENDIENTE DE CAMBIOS", archivo: archivo }),
+        headers: { "Content-Type": "application/json" }
+      }).then(res => alert("Se marcó como pendiente de cambios.")).catch(console.error);
+    }
+  </script>
+</body>
+</html>
